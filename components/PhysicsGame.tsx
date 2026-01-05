@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import Matter from 'matter-js';
 import { GAME_WIDTH, GAME_HEIGHT, SPAWN_Y, LOSE_LINE_Y, CIRCLE_DEFS, NEXT_TILE_PROBS } from '../constants';
 import { GameStats } from '../types';
+import { soundService } from '../services/soundService';
 
 interface PhysicsGameProps {
   onUpdateStats: (stats: Partial<GameStats>) => void;
@@ -19,6 +20,7 @@ const PhysicsGame: React.FC<PhysicsGameProps> = ({ onUpdateStats, isGameOver, on
   const [nextValue, setNextValue] = useState<number>(2);
   const [mousePos, setMousePos] = useState({ x: GAME_WIDTH / 2, y: SPAWN_Y });
   const [canDrop, setCanDrop] = useState(true);
+  const [isPopping, setIsPopping] = useState(false);
   
   const scoreRef = useRef(0);
   const highestRef = useRef(2);
@@ -27,15 +29,19 @@ const PhysicsGame: React.FC<PhysicsGameProps> = ({ onUpdateStats, isGameOver, on
   // The floor is at the bottom of the canvas
   const FLOOR_Y = GAME_HEIGHT;
 
-  // Handle Continue: Clear circles at the top
+  // Handle Continue: Remove half the circles on board (prioritizing top ones)
   useEffect(() => {
     if (continueToken > 0 && engineRef.current) {
       const bodies = Matter.Composite.allBodies(engineRef.current.world);
-      // Remove circles that are in the top 40% of the screen to give space
-      const toRemove = bodies.filter(b => b.label === 'circle' && b.position.y < GAME_HEIGHT * 0.4);
-      Matter.World.remove(engineRef.current.world, toRemove);
+      const circles = bodies.filter(b => b.label === 'circle');
       
-      // Clear game over timer if it's running
+      if (circles.length > 0) {
+        const sortedCircles = [...circles].sort((a, b) => a.position.y - b.position.y);
+        const removeCount = Math.ceil(sortedCircles.length / 2);
+        const toRemove = sortedCircles.slice(0, removeCount);
+        Matter.World.remove(engineRef.current.world, toRemove);
+      }
+      
       if (gameOverTimerRef.current) {
         clearTimeout(gameOverTimerRef.current);
         gameOverTimerRef.current = null;
@@ -74,6 +80,8 @@ const PhysicsGame: React.FC<PhysicsGameProps> = ({ onUpdateStats, isGameOver, on
     if (newValue > highestRef.current) highestRef.current = newValue;
     onUpdateStats({ score: scoreRef.current, highestTile: highestRef.current });
     
+    soundService.playMerge(newValue);
+
     if (newValue <= 2048) {
       const merged = spawnCircle(newX, newY, newValue);
       Matter.World.add(engineRef.current.world, merged);
@@ -86,9 +94,7 @@ const PhysicsGame: React.FC<PhysicsGameProps> = ({ onUpdateStats, isGameOver, on
   useEffect(() => {
     if (!sceneRef.current) return;
 
-    const engine = Matter.Engine.create({
-      enableSleeping: false
-    });
+    const engine = Matter.Engine.create({ enableSleeping: false });
     const render = Matter.Render.create({
       element: sceneRef.current,
       engine: engine,
@@ -96,18 +102,11 @@ const PhysicsGame: React.FC<PhysicsGameProps> = ({ onUpdateStats, isGameOver, on
         width: GAME_WIDTH,
         height: GAME_HEIGHT,
         wireframes: false,
-        background: '#111d2e'
+        background: 'transparent'
       }
     });
 
-    const wallOptions = { 
-      isStatic: true, 
-      render: { 
-        visible: false 
-      } 
-    };
-    
-    // Physical ground matches exactly with the canvas bottom edge
+    const wallOptions = { isStatic: true, render: { visible: false } };
     const ground = Matter.Bodies.rectangle(GAME_WIDTH / 2, FLOOR_Y + 25, GAME_WIDTH, 50, wallOptions);
     const leftWall = Matter.Bodies.rectangle(-25, GAME_HEIGHT / 2, 50, GAME_HEIGHT, wallOptions);
     const rightWall = Matter.Bodies.rectangle(GAME_WIDTH + 25, GAME_HEIGHT / 2, 50, GAME_HEIGHT, wallOptions);
@@ -115,8 +114,7 @@ const PhysicsGame: React.FC<PhysicsGameProps> = ({ onUpdateStats, isGameOver, on
     Matter.World.add(engine.world, [ground, leftWall, rightWall]);
 
     Matter.Events.on(engine, 'collisionStart', (event) => {
-      const pairs = event.pairs;
-      pairs.forEach((pair) => {
+      event.pairs.forEach((pair) => {
         const { bodyA, bodyB } = pair;
         if (bodyA.label === 'circle' && bodyB.label === 'circle') {
           if (bodyA.plugin.value === bodyB.plugin.value) {
@@ -128,13 +126,12 @@ const PhysicsGame: React.FC<PhysicsGameProps> = ({ onUpdateStats, isGameOver, on
 
     Matter.Events.on(engine, 'afterUpdate', () => {
       const circles = engine.world.bodies.filter(b => b.label === 'circle' && !b.isStatic);
-      // Overflow logic: Touching the line and staying there (low velocity)
       const isOverflowing = circles.some(c => c.position.y < LOSE_LINE_Y && Math.abs(c.velocity.y) < 0.2);
       
       if (isOverflowing && !gameOverTimerRef.current) {
         gameOverTimerRef.current = window.setTimeout(() => {
           onUpdateStats({ isGameOver: true });
-        }, 3000);
+        }, 1000);
       } else if (!isOverflowing && gameOverTimerRef.current) {
         clearTimeout(gameOverTimerRef.current);
         gameOverTimerRef.current = null;
@@ -165,7 +162,6 @@ const PhysicsGame: React.FC<PhysicsGameProps> = ({ onUpdateStats, isGameOver, on
         }
       });
 
-      // Draw the "Lose Line" at the top
       context.beginPath();
       context.setLineDash([10, 5]);
       context.strokeStyle = 'rgba(255, 255, 255, 0.4)'; 
@@ -176,7 +172,6 @@ const PhysicsGame: React.FC<PhysicsGameProps> = ({ onUpdateStats, isGameOver, on
       context.setLineDash([]);
       context.closePath();
 
-      // Ensure a visual bottom line is drawn to clearly separate the play area from the padding below
       context.beginPath();
       context.strokeStyle = '#ffffff';
       context.lineWidth = 2;
@@ -217,12 +212,16 @@ const PhysicsGame: React.FC<PhysicsGameProps> = ({ onUpdateStats, isGameOver, on
   const handleDrop = () => {
     if (isGameOver || !canDrop || !engineRef.current) return;
     
+    soundService.playDrop();
     const circle = spawnCircle(mousePos.x, SPAWN_Y, nextValue);
     Matter.World.add(engineRef.current.world, circle);
     
     const nextIdx = Math.floor(Math.random() * NEXT_TILE_PROBS.length);
     const newValue = NEXT_TILE_PROBS[nextIdx];
+    
+    setIsPopping(true);
     setNextValue(newValue);
+    setTimeout(() => setIsPopping(false), 200);
     
     setCanDrop(false);
     setTimeout(() => {
@@ -234,9 +233,27 @@ const PhysicsGame: React.FC<PhysicsGameProps> = ({ onUpdateStats, isGameOver, on
 
   return (
     <div className="relative cursor-crosshair select-none" onMouseMove={handleMouseMove} onClick={handleDrop} onTouchMove={handleMouseMove} onTouchEnd={handleDrop}>
+      <style>{`
+        @keyframes subtle-pulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.05); }
+        }
+        @keyframes pop-in {
+          0% { transform: scale(0.5); opacity: 0; }
+          70% { transform: scale(1.2); opacity: 1; }
+          100% { transform: scale(1); opacity: 1; }
+        }
+        .preview-pulse {
+          animation: subtle-pulse 2s infinite ease-in-out;
+        }
+        .preview-pop {
+          animation: pop-in 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+      `}</style>
+      
       {!isGameOver && (
         <div 
-          className="absolute pointer-events-none rounded-full flex items-center justify-center font-bold shadow-2xl"
+          className={`absolute pointer-events-none rounded-full flex items-center justify-center font-bold shadow-2xl ${isPopping ? 'preview-pop' : 'preview-pulse'}`}
           style={{
             left: mousePos.x - currentDef.radius,
             top: SPAWN_Y - currentDef.radius,
@@ -247,8 +264,9 @@ const PhysicsGame: React.FC<PhysicsGameProps> = ({ onUpdateStats, isGameOver, on
             borderWidth: '6px',
             color: '#ffffff',
             opacity: 0.9,
-            transition: 'background-color 0.1s, width 0.1s, height 0.1s, left 0.05s linear',
-            fontSize: '1.25rem',
+            transition: 'background-color 0.2s, width 0.2s, height 0.2s, left 0.05s linear',
+            boxShadow: `0 0 20px ${currentDef.color}66, 0 10px 30px rgba(0,0,0,0.4)`,
+            fontSize: `${currentDef.radius * 0.8}px`,
             zIndex: 10
           }}
         >
@@ -256,7 +274,7 @@ const PhysicsGame: React.FC<PhysicsGameProps> = ({ onUpdateStats, isGameOver, on
         </div>
       )}
 
-      <div ref={sceneRef} className="overflow-hidden bg-[#111d2e] rounded-xl shadow-2xl border-[6px] border-white" />
+      <div ref={sceneRef} className="overflow-hidden bg-blue-950/20 backdrop-blur-sm rounded-xl shadow-2xl border-[6px] border-white/90" />
     </div>
   );
 };

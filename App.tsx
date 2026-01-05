@@ -1,10 +1,16 @@
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import PhysicsGame from './components/PhysicsGame';
+import AdInterstitial from './components/AdInterstitial';
 import { GameStats } from './types';
+import { soundService } from './services/soundService';
+import { adService } from './services/adService';
 
 const App: React.FC = () => {
   const [hasStarted, setHasStarted] = useState(false);
+  const [showAd, setShowAd] = useState(false);
+  const [isAdLoading, setIsAdLoading] = useState(false);
+  
   const [stats, setStats] = useState<GameStats>({
     score: 0,
     highScore: Number(localStorage.getItem('2048_highScore')) || 0,
@@ -15,6 +21,12 @@ const App: React.FC = () => {
 
   const [gameId, setGameId] = useState(0);
   const [continueToken, setContinueToken] = useState(0);
+
+  useEffect(() => {
+    if (stats.isGameOver) {
+      soundService.playGameOver();
+    }
+  }, [stats.isGameOver]);
 
   const updateStats = useCallback((newStats: Partial<GameStats>) => {
     setStats(prev => {
@@ -28,6 +40,7 @@ const App: React.FC = () => {
   }, []);
 
   const resetGame = () => {
+    soundService.playButton();
     setStats({
       score: 0,
       highScore: Number(localStorage.getItem('2048_highScore')) || 0,
@@ -38,14 +51,34 @@ const App: React.FC = () => {
     setGameId(prev => prev + 1);
   };
 
-  const handleContinue = () => {
+  const handleContinueRequest = async () => {
+    soundService.playButton();
+    setIsAdLoading(true);
+    
+    // 1. Simulate AdMob "Loading Ad" phase
+    await adService.prepareAd();
+    
+    setIsAdLoading(false);
+    // 2. Show the Interstitial
+    setShowAd(true);
+  };
+
+  const onAdFinished = () => {
+    setShowAd(false);
+    adService.reset();
+    // 3. Reward the player by continuing
     setStats(prev => ({ ...prev, isGameOver: false }));
     setContinueToken(prev => prev + 1);
   };
 
+  const handleStartGame = () => {
+    soundService.playButton();
+    setHasStarted(true);
+  };
+
   if (!hasStarted) {
     return (
-      <div className="min-h-screen bg-[#111d2e] text-white flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-500">
+      <div className="min-h-screen bg-transparent text-white flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-500">
         <div className="mb-12 space-y-4 flex flex-col items-center">
           <h1 
             className="text-7xl md:text-8xl font-black italic tracking-tighter drop-shadow-[0_10px_10px_rgba(0,0,0,0.5)] select-none animate-bounce px-8 overflow-visible"
@@ -58,16 +91,16 @@ const App: React.FC = () => {
           >
             2048STACK
           </h1>
-          <p className="text-xl font-medium text-slate-400 tracking-wide">
+          <p className="text-xl font-medium text-blue-200 tracking-wide">
             Stack 'em high, don't cross the line!
           </p>
         </div>
 
         <div className="relative group">
-          <div className="absolute -inset-1 bg-gradient-to-r from-violet-600 to-indigo-600 rounded-2xl blur opacity-25 group-hover:opacity-75 transition duration-1000 group-hover:duration-200 animate-pulse"></div>
+          <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl blur opacity-25 group-hover:opacity-75 transition duration-1000 group-hover:duration-200 animate-pulse"></div>
           <button 
-            onClick={() => setHasStarted(true)}
-            className="relative px-12 py-5 bg-gradient-to-r from-violet-600 to-indigo-600 rounded-2xl font-black text-2xl shadow-2xl transition-all hover:scale-110 active:scale-95 flex items-center gap-4 border border-white/20"
+            onClick={handleStartGame}
+            className="relative px-12 py-5 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl font-black text-2xl shadow-2xl transition-all hover:scale-110 active:scale-95 flex items-center gap-4 border border-white/20"
           >
             <i className="fas fa-play"></i> START GAME
           </button>
@@ -88,7 +121,10 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#111d2e] text-white flex flex-col items-center p-4 animate-in zoom-in-95 duration-500">
+    <div className="min-h-screen bg-transparent text-white flex flex-col items-center p-4 animate-in zoom-in-95 duration-500">
+      {/* Interstitial Ad Layer */}
+      {showAd && <AdInterstitial onClose={onAdFinished} />}
+
       {/* Header UI */}
       <div className="w-full max-w-[450px] mb-4 flex justify-between items-center gap-2">
         <div className="flex-1 min-w-0">
@@ -103,11 +139,11 @@ const App: React.FC = () => {
           </h1>
         </div>
         <div className="flex gap-2 flex-shrink-0">
-          <div className="bg-[#111d2e] border-2 border-white px-3 py-1 rounded-lg text-center shadow-lg min-w-[75px]">
+          <div className="bg-blue-900/40 backdrop-blur-sm border-2 border-white/80 px-3 py-1 rounded-lg text-center shadow-lg min-w-[75px]">
             <div className="text-[10px] uppercase text-white font-black tracking-widest">Score</div>
             <div className="text-xl font-bold text-white">{stats.score}</div>
           </div>
-          <div className="bg-[#111d2e] border-2 border-white px-3 py-1 rounded-lg text-center shadow-lg min-w-[75px]">
+          <div className="bg-blue-900/40 backdrop-blur-sm border-2 border-white/80 px-3 py-1 rounded-lg text-center shadow-lg min-w-[75px]">
             <div className="text-[10px] uppercase text-white font-black tracking-widest">Best</div>
             <div className="text-xl font-bold text-white">{stats.highScore}</div>
           </div>
@@ -126,7 +162,7 @@ const App: React.FC = () => {
 
         {/* Game Over Screen */}
         {stats.isGameOver && (
-          <div className="absolute inset-0 bg-[#111d2e]/95 backdrop-blur-md flex flex-col items-center justify-center z-50 rounded-xl p-8 text-center animate-in zoom-in duration-300">
+          <div className="absolute inset-0 bg-blue-950/95 backdrop-blur-md flex flex-col items-center justify-center z-50 rounded-xl p-8 text-center animate-in zoom-in duration-300">
             <div className="mb-10 flex flex-col items-center">
               <span className="text-sm font-black tracking-widest uppercase opacity-70 mb-1">Current Score</span>
               <h2 className="text-8xl font-black text-white tracking-tighter mb-4">{stats.score}</h2>
@@ -138,15 +174,24 @@ const App: React.FC = () => {
             
             <div className="flex flex-col gap-4 w-full">
               <button 
-                onClick={handleContinue}
-                className="w-full bg-gradient-to-r from-violet-600 to-indigo-600 text-white hover:from-violet-500 hover:to-indigo-500 py-5 rounded-2xl font-black text-xl shadow-2xl transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-3"
+                onClick={handleContinueRequest}
+                disabled={isAdLoading}
+                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-500 hover:to-indigo-500 py-5 rounded-2xl font-black text-xl shadow-2xl transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50"
               >
-                <i className="fas fa-video"></i> CONTINUE (AD)
+                {isAdLoading ? (
+                  <span className="flex items-center gap-2">
+                    <i className="fas fa-spinner animate-spin"></i> LOADING AD...
+                  </span>
+                ) : (
+                  <>
+                    <i className="fas fa-video"></i> CONTINUE (AD)
+                  </>
+                )}
               </button>
               
               <button 
                 onClick={resetGame}
-                className="w-full bg-white text-[#111d2e] hover:bg-slate-200 py-5 rounded-2xl font-black text-xl shadow-xl transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-3 border-4 border-[#111d2e]"
+                className="w-full bg-white text-blue-950 hover:bg-slate-200 py-5 rounded-2xl font-black text-xl shadow-xl transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-3 border-4 border-blue-900"
               >
                 <i className="fas fa-rotate-left"></i> RESTART
               </button>
