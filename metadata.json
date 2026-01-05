@@ -1,0 +1,5 @@
+{
+  "name": "2048STACK",
+  "description": "A physics-based 2048 merging game where circles of different sizes and rainbow colors must be stacked without overflowing. Reach 2048 to clear the board and maximize your score!",
+  "requestFramePermissions": []
+}

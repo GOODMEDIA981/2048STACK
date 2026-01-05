@@ -1,0 +1,264 @@
+
+import React, { useEffect, useRef, useState } from 'react';
+import Matter from 'matter-js';
+import { GAME_WIDTH, GAME_HEIGHT, SPAWN_Y, LOSE_LINE_Y, CIRCLE_DEFS, NEXT_TILE_PROBS } from '../constants';
+import { GameStats } from '../types';
+
+interface PhysicsGameProps {
+  onUpdateStats: (stats: Partial<GameStats>) => void;
+  isGameOver: boolean;
+  onReset: () => void;
+  continueToken?: number;
+}
+
+const PhysicsGame: React.FC<PhysicsGameProps> = ({ onUpdateStats, isGameOver, onReset, continueToken = 0 }) => {
+  const sceneRef = useRef<HTMLDivElement>(null);
+  const engineRef = useRef<Matter.Engine | null>(null);
+  const renderRef = useRef<Matter.Render | null>(null);
+  const runnerRef = useRef<Matter.Runner | null>(null);
+  const [nextValue, setNextValue] = useState<number>(2);
+  const [mousePos, setMousePos] = useState({ x: GAME_WIDTH / 2, y: SPAWN_Y });
+  const [canDrop, setCanDrop] = useState(true);
+  
+  const scoreRef = useRef(0);
+  const highestRef = useRef(2);
+  const gameOverTimerRef = useRef<number | null>(null);
+
+  // The floor is at the bottom of the canvas
+  const FLOOR_Y = GAME_HEIGHT;
+
+  // Handle Continue: Clear circles at the top
+  useEffect(() => {
+    if (continueToken > 0 && engineRef.current) {
+      const bodies = Matter.Composite.allBodies(engineRef.current.world);
+      // Remove circles that are in the top 40% of the screen to give space
+      const toRemove = bodies.filter(b => b.label === 'circle' && b.position.y < GAME_HEIGHT * 0.4);
+      Matter.World.remove(engineRef.current.world, toRemove);
+      
+      // Clear game over timer if it's running
+      if (gameOverTimerRef.current) {
+        clearTimeout(gameOverTimerRef.current);
+        gameOverTimerRef.current = null;
+      }
+    }
+  }, [continueToken]);
+
+  const spawnCircle = (x: number, y: number, value: number, isStatic = false) => {
+    const def = CIRCLE_DEFS[value] || CIRCLE_DEFS[2];
+    const circle = Matter.Bodies.circle(x, y, def.radius, {
+      restitution: 0.3,
+      friction: 0.05,
+      isStatic,
+      label: 'circle',
+      plugin: { value },
+      render: {
+        fillStyle: def.color,
+        strokeStyle: def.borderColor,
+        lineWidth: 6 
+      }
+    });
+    return circle;
+  };
+
+  const handleMerge = (bodyA: Matter.Body, bodyB: Matter.Body) => {
+    if (!engineRef.current) return;
+    const value = bodyA.plugin.value;
+    const newValue = value * 2;
+    
+    const newX = (bodyA.position.x + bodyB.position.x) / 2;
+    const newY = (bodyA.position.y + bodyB.position.y) / 2;
+
+    Matter.World.remove(engineRef.current.world, [bodyA, bodyB]);
+    
+    scoreRef.current += newValue;
+    if (newValue > highestRef.current) highestRef.current = newValue;
+    onUpdateStats({ score: scoreRef.current, highestTile: highestRef.current });
+    
+    if (newValue <= 2048) {
+      const merged = spawnCircle(newX, newY, newValue);
+      Matter.World.add(engineRef.current.world, merged);
+    } else {
+      scoreRef.current += newValue * 2;
+      onUpdateStats({ score: scoreRef.current });
+    }
+  };
+
+  useEffect(() => {
+    if (!sceneRef.current) return;
+
+    const engine = Matter.Engine.create({
+      enableSleeping: false
+    });
+    const render = Matter.Render.create({
+      element: sceneRef.current,
+      engine: engine,
+      options: {
+        width: GAME_WIDTH,
+        height: GAME_HEIGHT,
+        wireframes: false,
+        background: '#111d2e'
+      }
+    });
+
+    const wallOptions = { 
+      isStatic: true, 
+      render: { 
+        visible: false 
+      } 
+    };
+    
+    // Physical ground matches exactly with the canvas bottom edge
+    const ground = Matter.Bodies.rectangle(GAME_WIDTH / 2, FLOOR_Y + 25, GAME_WIDTH, 50, wallOptions);
+    const leftWall = Matter.Bodies.rectangle(-25, GAME_HEIGHT / 2, 50, GAME_HEIGHT, wallOptions);
+    const rightWall = Matter.Bodies.rectangle(GAME_WIDTH + 25, GAME_HEIGHT / 2, 50, GAME_HEIGHT, wallOptions);
+    
+    Matter.World.add(engine.world, [ground, leftWall, rightWall]);
+
+    Matter.Events.on(engine, 'collisionStart', (event) => {
+      const pairs = event.pairs;
+      pairs.forEach((pair) => {
+        const { bodyA, bodyB } = pair;
+        if (bodyA.label === 'circle' && bodyB.label === 'circle') {
+          if (bodyA.plugin.value === bodyB.plugin.value) {
+            handleMerge(bodyA, bodyB);
+          }
+        }
+      });
+    });
+
+    Matter.Events.on(engine, 'afterUpdate', () => {
+      const circles = engine.world.bodies.filter(b => b.label === 'circle' && !b.isStatic);
+      // Overflow logic: Touching the line and staying there (low velocity)
+      const isOverflowing = circles.some(c => c.position.y < LOSE_LINE_Y && Math.abs(c.velocity.y) < 0.2);
+      
+      if (isOverflowing && !gameOverTimerRef.current) {
+        gameOverTimerRef.current = window.setTimeout(() => {
+          onUpdateStats({ isGameOver: true });
+        }, 3000);
+      } else if (!isOverflowing && gameOverTimerRef.current) {
+        clearTimeout(gameOverTimerRef.current);
+        gameOverTimerRef.current = null;
+      }
+    });
+
+    const runner = Matter.Runner.create();
+    Matter.Runner.run(runner, engine);
+    Matter.Render.run(render);
+
+    engineRef.current = engine;
+    renderRef.current = render;
+    runnerRef.current = runner;
+
+    const customRenderer = () => {
+      const context = render.context;
+      const bodies = Matter.Composite.allBodies(engine.world);
+      
+      context.font = 'bold 20px Inter, sans-serif';
+      context.textAlign = 'center';
+      context.textBaseline = 'middle';
+
+      bodies.forEach(body => {
+        if (body.label === 'circle') {
+          const value = body.plugin.value;
+          context.fillStyle = '#ffffff'; 
+          context.fillText(value.toString(), body.position.x, body.position.y);
+        }
+      });
+
+      // Draw the "Lose Line" at the top
+      context.beginPath();
+      context.setLineDash([10, 5]);
+      context.strokeStyle = 'rgba(255, 255, 255, 0.4)'; 
+      context.lineWidth = 2;
+      context.moveTo(0, LOSE_LINE_Y);
+      context.lineTo(GAME_WIDTH, LOSE_LINE_Y);
+      context.stroke();
+      context.setLineDash([]);
+      context.closePath();
+
+      // Ensure a visual bottom line is drawn to clearly separate the play area from the padding below
+      context.beginPath();
+      context.strokeStyle = '#ffffff';
+      context.lineWidth = 2;
+      context.moveTo(0, FLOOR_Y - 1);
+      context.lineTo(GAME_WIDTH, FLOOR_Y - 1);
+      context.stroke();
+      context.closePath();
+    };
+
+    Matter.Events.on(render, 'afterRender', customRenderer);
+
+    return () => {
+      Matter.Render.stop(render);
+      Matter.Runner.stop(runner);
+      Matter.Engine.clear(engine);
+      if (render.canvas) render.canvas.remove();
+      if (gameOverTimerRef.current) clearTimeout(gameOverTimerRef.current);
+    };
+  }, []);
+
+  const handleMouseMove = (e: React.MouseEvent | React.TouchEvent) => {
+    if (isGameOver) return;
+    const rect = sceneRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    
+    let x = 0;
+    if ('touches' in e) {
+      x = e.touches[0].clientX - rect.left;
+    } else {
+      x = e.clientX - rect.left;
+    }
+    
+    const radius = CIRCLE_DEFS[nextValue].radius;
+    x = Math.max(radius, Math.min(GAME_WIDTH - radius, x));
+    setMousePos({ x, y: SPAWN_Y });
+  };
+
+  const handleDrop = () => {
+    if (isGameOver || !canDrop || !engineRef.current) return;
+    
+    const circle = spawnCircle(mousePos.x, SPAWN_Y, nextValue);
+    Matter.World.add(engineRef.current.world, circle);
+    
+    const nextIdx = Math.floor(Math.random() * NEXT_TILE_PROBS.length);
+    const newValue = NEXT_TILE_PROBS[nextIdx];
+    setNextValue(newValue);
+    
+    setCanDrop(false);
+    setTimeout(() => {
+      setCanDrop(true);
+    }, 150);
+  };
+
+  const currentDef = CIRCLE_DEFS[nextValue];
+
+  return (
+    <div className="relative cursor-crosshair select-none" onMouseMove={handleMouseMove} onClick={handleDrop} onTouchMove={handleMouseMove} onTouchEnd={handleDrop}>
+      {!isGameOver && (
+        <div 
+          className="absolute pointer-events-none rounded-full flex items-center justify-center font-bold shadow-2xl"
+          style={{
+            left: mousePos.x - currentDef.radius,
+            top: SPAWN_Y - currentDef.radius,
+            width: currentDef.radius * 2,
+            height: currentDef.radius * 2,
+            backgroundColor: currentDef.color,
+            borderColor: currentDef.borderColor,
+            borderWidth: '6px',
+            color: '#ffffff',
+            opacity: 0.9,
+            transition: 'background-color 0.1s, width 0.1s, height 0.1s, left 0.05s linear',
+            fontSize: '1.25rem',
+            zIndex: 10
+          }}
+        >
+          {nextValue}
+        </div>
+      )}
+
+      <div ref={sceneRef} className="overflow-hidden bg-[#111d2e] rounded-xl shadow-2xl border-[6px] border-white" />
+    </div>
+  );
+};
+
+export default PhysicsGame;
