@@ -29,6 +29,14 @@ const App: React.FC = () => {
   const [gameId, setGameId] = useState(0);
   const [continueToken, setContinueToken] = useState(0);
 
+  /**
+   * App Bootstrap: Initialize AdMob native SDK.
+   * This is safe to call even in browser as AdService handles the check.
+   */
+  useEffect(() => {
+    adService.initialize();
+  }, []);
+
   useEffect(() => {
     if (stats.isGameOver) {
       soundService.playGameOver();
@@ -64,12 +72,24 @@ const App: React.FC = () => {
     setGamesPlayedCount(newCount);
     localStorage.setItem('2048_gamesPlayed', newCount.toString());
 
+    // Show an ad every 4th game session
     if (newCount > 0 && newCount % 4 === 0) {
       setAdType('periodic');
       setIsAdLoading(true);
       await adService.prepareAd();
       setIsAdLoading(false);
-      setShowAd(true);
+      
+      /**
+       * Attempt to show native ad first.
+       * If successful, the native overlay will cover the screen.
+       * If unsuccessful (e.g., in a browser), we fallback to our custom React ad component.
+       */
+      const nativeShown = await adService.showInterstitial();
+      if (nativeShown) {
+        onAdFinished(); // Native ad finished, proceed to reset game
+      } else {
+        setShowAd(true); // Show the in-game simulation
+      }
     } else {
       performReset();
     }
@@ -81,7 +101,14 @@ const App: React.FC = () => {
     setIsAdLoading(true);
     await adService.prepareAd();
     setIsAdLoading(false);
-    setShowAd(true);
+
+    // Attempt to show native interstitial
+    const nativeShown = await adService.showInterstitial();
+    if (nativeShown) {
+      onAdFinished(); // Rewarded logic applied directly
+    } else {
+      setShowAd(true); // Show in-game fallback
+    }
   };
 
   const onAdFinished = () => {
@@ -91,9 +118,11 @@ const App: React.FC = () => {
     adService.reset();
 
     if (currentType === 'continue') {
+      // Reward logic: resume the current game
       setStats(prev => ({ ...prev, isGameOver: false }));
       setContinueToken(prev => prev + 1);
     } else if (currentType === 'periodic') {
+      // Standard interstitial logic: reset game as requested
       performReset();
     }
   };
@@ -158,6 +187,7 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-transparent text-white flex flex-col items-center p-4 animate-in zoom-in-95 duration-500">
+      {/* showAd is only true if native interstitial failed or is not available */}
       {showAd && <AdInterstitial onClose={onAdFinished} />}
 
       <div className="w-full max-w-[450px] mb-4 flex justify-between items-center gap-2">
