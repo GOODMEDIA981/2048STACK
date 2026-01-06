@@ -2,6 +2,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import PhysicsGame from './components/PhysicsGame';
 import AdInterstitial from './components/AdInterstitial';
+import PrivacyPolicyModal from './components/PrivacyPolicyModal';
 import { GameStats } from './types';
 import { soundService } from './services/soundService';
 import { adService } from './services/adService';
@@ -9,6 +10,7 @@ import { adService } from './services/adService';
 const App: React.FC = () => {
   const [hasStarted, setHasStarted] = useState(false);
   const [showAd, setShowAd] = useState(false);
+  const [showPrivacy, setShowPrivacy] = useState(false);
   const [isAdLoading, setIsAdLoading] = useState(false);
   const [adType, setAdType] = useState<'continue' | 'periodic' | null>(null);
   
@@ -58,12 +60,10 @@ const App: React.FC = () => {
   const resetGame = async () => {
     soundService.playButton();
     
-    // Increment the game play counter
     const newCount = gamesPlayedCount + 1;
     setGamesPlayedCount(newCount);
     localStorage.setItem('2048_gamesPlayed', newCount.toString());
 
-    // Check if we should play a periodic ad (every 4 games)
     if (newCount > 0 && newCount % 4 === 0) {
       setAdType('periodic');
       setIsAdLoading(true);
@@ -79,12 +79,8 @@ const App: React.FC = () => {
     soundService.playButton();
     setAdType('continue');
     setIsAdLoading(true);
-    
-    // 1. Simulate AdMob "Loading Ad" phase
     await adService.prepareAd();
-    
     setIsAdLoading(false);
-    // 2. Show the Interstitial
     setShowAd(true);
   };
 
@@ -95,11 +91,9 @@ const App: React.FC = () => {
     adService.reset();
 
     if (currentType === 'continue') {
-      // Reward the player by continuing the current game
       setStats(prev => ({ ...prev, isGameOver: false }));
       setContinueToken(prev => prev + 1);
     } else if (currentType === 'periodic') {
-      // Just a periodic ad between games, now actually reset
       performReset();
     }
   };
@@ -112,6 +106,8 @@ const App: React.FC = () => {
   if (!hasStarted) {
     return (
       <div className="min-h-screen bg-transparent text-white flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-500">
+        {showPrivacy && <PrivacyPolicyModal onClose={() => setShowPrivacy(false)} />}
+        
         <div className="mb-12 space-y-4 flex flex-col items-center">
           <h1 
             className="text-7xl md:text-8xl font-black italic tracking-tighter drop-shadow-[0_10px_10px_rgba(0,0,0,0.5)] select-none animate-bounce px-8 overflow-visible"
@@ -129,7 +125,7 @@ const App: React.FC = () => {
           </p>
         </div>
 
-        <div className="relative group">
+        <div className="relative group mb-12">
           <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl blur opacity-25 group-hover:opacity-75 transition duration-1000 group-hover:duration-200 animate-pulse"></div>
           <button 
             onClick={handleStartGame}
@@ -139,7 +135,7 @@ const App: React.FC = () => {
           </button>
         </div>
 
-        <div className="mt-16 flex gap-8">
+        <div className="flex gap-8 mb-12">
            <div className="flex flex-col">
               <span className="text-[10px] uppercase font-black tracking-widest text-white">Best Score</span>
               <span className="text-2xl font-bold text-white">{stats.highScore}</span>
@@ -149,16 +145,21 @@ const App: React.FC = () => {
               <span className="text-2xl font-bold text-white">2048</span>
            </div>
         </div>
+
+        <button 
+          onClick={() => setShowPrivacy(true)}
+          className="text-[10px] uppercase font-black tracking-widest text-white hover:text-white transition-colors flex items-center gap-2"
+        >
+          <i className="fas fa-shield-halved"></i> Privacy & Terms
+        </button>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-transparent text-white flex flex-col items-center p-4 animate-in zoom-in-95 duration-500">
-      {/* Interstitial Ad Layer */}
       {showAd && <AdInterstitial onClose={onAdFinished} />}
 
-      {/* Header UI */}
       <div className="w-full max-w-[450px] mb-4 flex justify-between items-center gap-2">
         <div className="flex-1 min-w-0">
           <h1 
@@ -183,7 +184,6 @@ const App: React.FC = () => {
         </div>
       </div>
 
-      {/* Game Engine */}
       <div className="relative">
         <PhysicsGame 
           key={gameId}
@@ -193,7 +193,6 @@ const App: React.FC = () => {
           continueToken={continueToken}
         />
 
-        {/* Game Over Screen */}
         {stats.isGameOver && (
           <div className="absolute inset-0 bg-blue-950/95 backdrop-blur-md flex flex-col items-center justify-center z-50 rounded-xl p-8 text-center animate-in zoom-in duration-300">
             <div className="mb-10 flex flex-col items-center">
