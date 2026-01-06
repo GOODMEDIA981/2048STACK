@@ -10,7 +10,12 @@ const App: React.FC = () => {
   const [hasStarted, setHasStarted] = useState(false);
   const [showAd, setShowAd] = useState(false);
   const [isAdLoading, setIsAdLoading] = useState(false);
+  const [adType, setAdType] = useState<'continue' | 'periodic' | null>(null);
   
+  const [gamesPlayedCount, setGamesPlayedCount] = useState(() => 
+    Number(localStorage.getItem('2048_gamesPlayed')) || 0
+  );
+
   const [stats, setStats] = useState<GameStats>({
     score: 0,
     highScore: Number(localStorage.getItem('2048_highScore')) || 0,
@@ -39,8 +44,7 @@ const App: React.FC = () => {
     });
   }, []);
 
-  const resetGame = () => {
-    soundService.playButton();
+  const performReset = useCallback(() => {
     setStats({
       score: 0,
       highScore: Number(localStorage.getItem('2048_highScore')) || 0,
@@ -49,10 +53,31 @@ const App: React.FC = () => {
       isGameOver: false
     });
     setGameId(prev => prev + 1);
+  }, []);
+
+  const resetGame = async () => {
+    soundService.playButton();
+    
+    // Increment the game play counter
+    const newCount = gamesPlayedCount + 1;
+    setGamesPlayedCount(newCount);
+    localStorage.setItem('2048_gamesPlayed', newCount.toString());
+
+    // Check if we should play a periodic ad (every 4 games)
+    if (newCount > 0 && newCount % 4 === 0) {
+      setAdType('periodic');
+      setIsAdLoading(true);
+      await adService.prepareAd();
+      setIsAdLoading(false);
+      setShowAd(true);
+    } else {
+      performReset();
+    }
   };
 
   const handleContinueRequest = async () => {
     soundService.playButton();
+    setAdType('continue');
     setIsAdLoading(true);
     
     // 1. Simulate AdMob "Loading Ad" phase
@@ -64,11 +89,19 @@ const App: React.FC = () => {
   };
 
   const onAdFinished = () => {
+    const currentType = adType;
     setShowAd(false);
+    setAdType(null);
     adService.reset();
-    // 3. Reward the player by continuing
-    setStats(prev => ({ ...prev, isGameOver: false }));
-    setContinueToken(prev => prev + 1);
+
+    if (currentType === 'continue') {
+      // Reward the player by continuing the current game
+      setStats(prev => ({ ...prev, isGameOver: false }));
+      setContinueToken(prev => prev + 1);
+    } else if (currentType === 'periodic') {
+      // Just a periodic ad between games, now actually reset
+      performReset();
+    }
   };
 
   const handleStartGame = () => {
@@ -91,7 +124,7 @@ const App: React.FC = () => {
           >
             2048STACK
           </h1>
-          <p className="text-xl font-medium text-blue-200 tracking-wide">
+          <p className="text-xl font-medium text-white tracking-wide">
             Stack 'em high, don't cross the line!
           </p>
         </div>
@@ -108,13 +141,18 @@ const App: React.FC = () => {
 
         <div className="mt-16 flex gap-8">
            <div className="flex flex-col">
-              <span className="text-[10px] uppercase font-black tracking-widest opacity-50">Best Score</span>
-              <span className="text-2xl font-bold">{stats.highScore}</span>
+              <span className="text-[10px] uppercase font-black tracking-widest text-white">Best Score</span>
+              <span className="text-2xl font-bold text-white">{stats.highScore}</span>
            </div>
            <div className="flex flex-col border-l border-white/10 pl-8">
-              <span className="text-[10px] uppercase font-black tracking-widest opacity-50">Objective</span>
-              <span className="text-2xl font-bold">2048</span>
+              <span className="text-[10px] uppercase font-black tracking-widest text-white">Objective</span>
+              <span className="text-2xl font-bold text-white">2048</span>
            </div>
+        </div>
+        
+        {/* Game Counter Footer (Optional, useful for debugging/transparency) */}
+        <div className="mt-8 text-[10px] text-white opacity-40 uppercase tracking-widest font-black">
+          Games Played: {gamesPlayedCount}
         </div>
       </div>
     );
@@ -164,11 +202,11 @@ const App: React.FC = () => {
         {stats.isGameOver && (
           <div className="absolute inset-0 bg-blue-950/95 backdrop-blur-md flex flex-col items-center justify-center z-50 rounded-xl p-8 text-center animate-in zoom-in duration-300">
             <div className="mb-10 flex flex-col items-center">
-              <span className="text-sm font-black tracking-widest uppercase opacity-70 mb-1">Current Score</span>
+              <span className="text-sm font-black tracking-widest uppercase text-white mb-1">Current Score</span>
               <h2 className="text-8xl font-black text-white tracking-tighter mb-4">{stats.score}</h2>
               <div className="flex flex-col items-center bg-white/10 px-6 py-2 rounded-full border border-white/20">
-                <span className="text-[10px] font-black tracking-[0.2em] uppercase opacity-70">Best Score</span>
-                <span className="text-2xl font-bold">{stats.highScore}</span>
+                <span className="text-[10px] font-black tracking-[0.2em] uppercase text-white">Best Score</span>
+                <span className="text-2xl font-bold text-white">{stats.highScore}</span>
               </div>
             </div>
             
@@ -178,7 +216,7 @@ const App: React.FC = () => {
                 disabled={isAdLoading}
                 className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:from-blue-500 hover:to-indigo-500 py-5 rounded-2xl font-black text-xl shadow-2xl transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-3 disabled:opacity-50"
               >
-                {isAdLoading ? (
+                {isAdLoading && adType === 'continue' ? (
                   <span className="flex items-center gap-2">
                     <i className="fas fa-spinner animate-spin"></i> LOADING AD...
                   </span>
@@ -191,9 +229,18 @@ const App: React.FC = () => {
               
               <button 
                 onClick={resetGame}
-                className="w-full bg-white text-blue-950 hover:bg-slate-200 py-5 rounded-2xl font-black text-xl shadow-xl transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-3 border-4 border-blue-900"
+                disabled={isAdLoading && adType === 'periodic'}
+                className="w-full bg-white text-blue-950 hover:bg-slate-200 py-5 rounded-2xl font-black text-xl shadow-xl transition-all hover:scale-105 active:scale-95 flex items-center justify-center gap-3 border-4 border-blue-900 disabled:opacity-50"
               >
-                <i className="fas fa-rotate-left"></i> RESTART
+                {isAdLoading && adType === 'periodic' ? (
+                   <span className="flex items-center gap-2">
+                    <i className="fas fa-spinner animate-spin"></i> LOADING AD...
+                  </span>
+                ) : (
+                  <>
+                    <i className="fas fa-rotate-left"></i> RESTART
+                  </>
+                )}
               </button>
             </div>
           </div>

@@ -30,10 +30,10 @@ const AdInterstitial: React.FC<AdInterstitialProps> = ({ onClose }) => {
         onClick={() => canClose && onClose()}
         disabled={!canClose}
         className={`absolute top-4 right-4 w-10 h-10 rounded-full flex items-center justify-center transition-all ${
-          canClose ? 'bg-white text-black scale-100' : 'bg-white/10 text-white/30 scale-90'
+          canClose ? 'bg-white text-black scale-100' : 'bg-white/40 text-white scale-90'
         }`}
       >
-        {canClose ? <i className="fas fa-xmark text-xl"></i> : <span>{timeLeft}</span>}
+        {canClose ? <i className="fas fa-xmark text-xl"></i> : <span className="text-white font-bold">{timeLeft}</span>}
       </button>
 
       {/* Ad Content Simulation */}
@@ -41,10 +41,10 @@ const AdInterstitial: React.FC<AdInterstitialProps> = ({ onClose }) => {
         <div className="w-20 h-20 bg-blue-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg animate-pulse">
           <i className="fas fa-rocket text-4xl text-white"></i>
         </div>
-        <h3 className="text-2xl font-black mb-2 italic">SUPER STACKER PRO</h3>
-        <p className="text-blue-200 text-sm mb-8">Level up your stacking skills with the pro version!</p>
+        <h3 className="text-2xl font-black mb-2 italic text-white">SUPER STACKER PRO</h3>
+        <p className="text-white text-sm mb-8">Level up your stacking skills with the pro version!</p>
         
-        <div className="w-full bg-blue-600 py-4 rounded-xl font-black text-lg shadow-xl mb-4">
+        <div className="w-full bg-blue-600 py-4 rounded-xl font-black text-lg text-white shadow-xl mb-4">
           INSTALL NOW
         </div>
         
@@ -57,7 +57,7 @@ const AdInterstitial: React.FC<AdInterstitialProps> = ({ onClose }) => {
         </div>
       </div>
 
-      <p className="mt-8 text-white/40 text-xs uppercase tracking-[0.2em]">
+      <p className="mt-8 text-white text-xs uppercase tracking-[0.2em]">
         {canClose ? 'You can now close the ad' : `Reward in ${timeLeft} seconds`}
       </p>
     </div>
