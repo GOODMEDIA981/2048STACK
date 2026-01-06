@@ -149,11 +149,6 @@ const App: React.FC = () => {
               <span className="text-2xl font-bold text-white">2048</span>
            </div>
         </div>
-        
-        {/* Game Counter Footer (Optional, useful for debugging/transparency) */}
-        <div className="mt-8 text-[10px] text-white opacity-40 uppercase tracking-widest font-black">
-          Games Played: {gamesPlayedCount}
-        </div>
       </div>
     );
   }
