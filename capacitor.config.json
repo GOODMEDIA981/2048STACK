@@ -6,7 +6,8 @@
   "bundledWebRuntime": false,
   "plugins": {
     "AdMob": {
-      "initializeOnStartup": true
+      "initializeOnStartup": true,
+      "androidAppId": "ca-app-pub-XXXXXXXXXXXXXXXX~XXXXXXXXXX"
     }
   }
 }

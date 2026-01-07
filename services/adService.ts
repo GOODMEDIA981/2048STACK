@@ -3,17 +3,17 @@ import { AdMob, InterstitialAdOptions, RewardedAdOptions } from '@capacitor-comm
 
 /**
  * ADMOB PRODUCTION CHECKLIST:
- * 1. Replace the IDs below with your REAL IDs from the AdMob dashboard.
- * 2. Ensure your AdMob APP ID is in your AndroidManifest.xml (see PUBLISHING_GUIDE.md).
- * 3. Link your app in the AdMob console once it's live.
+ * 1. Replace the IDs below with your REAL "Ad Unit IDs" from the AdMob dashboard.
+ * 2. The "App ID" (with the ~) goes in capacitor.config.json and AndroidManifest.xml.
+ * 3. The "Ad Unit IDs" (with the /) go here.
  */
 class AdService {
   private isInterstitialLoaded: boolean = false;
   private isRewardedLoaded: boolean = false;
   
-  // Replace these with your REAL Ad Unit IDs
-  private readonly INTERSTITIAL_ID = 'ca-app-pub-3940256099942544/1033173712'; // Test ID
-  private readonly REWARDED_ID = 'ca-app-pub-3940256099942544/5224354917';     // Test ID
+  // REPLACE THESE WITH YOUR REAL "AD UNIT IDs" (Format: ca-app-pub-XXX/YYY)
+  private readonly INTERSTITIAL_ID = 'ca-app-pub-3940256099942544/1033173712'; // Replace this
+  private readonly REWARDED_ID = 'ca-app-pub-3940256099942544/5224354917';     // Replace this
 
   async initialize(): Promise<void> {
     try {
