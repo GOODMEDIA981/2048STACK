@@ -61,4 +61,26 @@ const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ onClose }) => {
         </div>
 
         {/* TERMS OF SERVICE SECTION */}
-        <div className="space
+        <div className="space-y-4 pt-4 border-t border-white/10">
+          <h2 className="text-xl font-black text-white border-b border-white/20 pb-2 uppercase tracking-tighter">Terms of Service</h2>
+          
+          <section>
+            <h3 className="text-sm font-bold text-white uppercase tracking-widest mb-2">1. Acceptance</h3>
+            <p className="text-white text-sm leading-relaxed">
+              Continued use of 2048STACK constitutes acceptance of these terms and the mandatory data collection required by our third-party providers.
+            </p>
+          </section>
+        </div>
+      </div>
+
+      <button 
+        onClick={onClose}
+        className="mt-6 w-full py-4 bg-white text-blue-950 font-black rounded-xl shadow-lg active:scale-95 transition-transform"
+      >
+        I ACCEPT & PLAY
+      </button>
+    </div>
+  );
+};
+
+export default PrivacyPolicyModal;
