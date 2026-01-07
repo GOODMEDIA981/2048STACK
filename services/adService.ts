@@ -1,57 +1,59 @@
 
 import { AdMob, InterstitialAdOptions, RewardedAdOptions } from '@capacitor-community/admob';
 
+/**
+ * ADMOB PRODUCTION CHECKLIST:
+ * 1. Replace the IDs below with your REAL IDs from the AdMob dashboard.
+ * 2. Ensure your AdMob APP ID is in your AndroidManifest.xml (see PUBLISHING_GUIDE.md).
+ * 3. Link your app in the AdMob console once it's live.
+ */
 class AdService {
   private isInterstitialLoaded: boolean = false;
   private isRewardedLoaded: boolean = false;
   
-  // Google Test IDs
-  private interstitialAdId: string = 'ca-app-pub-3940256099942544/1033173712';
-  private rewardedAdId: string = 'ca-app-pub-3940256099942544/5224354917';
+  // Replace these with your REAL Ad Unit IDs
+  private readonly INTERSTITIAL_ID = 'ca-app-pub-3940256099942544/1033173712'; // Test ID
+  private readonly REWARDED_ID = 'ca-app-pub-3940256099942544/5224354917';     // Test ID
 
   async initialize(): Promise<void> {
     try {
       await AdMob.initialize();
-      console.log('AdMob Initialized');
-      // Pre-load ads immediately after initialization
+      console.log('AdMob Initialized Successfully');
       this.prepareInterstitial();
       this.prepareRewarded();
     } catch (e) {
-      console.log('AdMob initialization skipped (Web/Dev mode)');
+      console.warn('AdMob init failed: Native environment not detected or plugin missing.');
     }
   }
 
-  // INTERSTITIAL LOGIC (For Periodic Restarts)
   async prepareInterstitial(): Promise<void> {
     try {
-      const options: InterstitialAdOptions = { adId: this.interstitialAdId };
+      const options: InterstitialAdOptions = { adId: this.INTERSTITIAL_ID };
       await AdMob.prepareInterstitial(options);
       this.isInterstitialLoaded = true;
     } catch (e) {
-      console.warn('Interstitial prep failed (Native plugin not found)');
       this.isInterstitialLoaded = false;
     }
   }
 
   async showInterstitial(): Promise<boolean> {
+    if (!this.isInterstitialLoaded) return false;
     try {
       await AdMob.showInterstitial();
       this.isInterstitialLoaded = false;
-      this.prepareInterstitial(); // Preload next
+      this.prepareInterstitial();
       return true;
     } catch (e) {
       return false;
     }
   }
 
-  // REWARDED LOGIC (For Continue Button)
   async prepareRewarded(): Promise<void> {
     try {
-      const options: RewardedAdOptions = { adId: this.rewardedAdId };
+      const options: RewardedAdOptions = { adId: this.REWARDED_ID };
       await AdMob.prepareRewardVideo(options);
       this.isRewardedLoaded = true;
     } catch (e) {
-      console.warn('Rewarded prep failed (Native plugin not found)');
       this.isRewardedLoaded = false;
     }
   }
@@ -59,32 +61,22 @@ class AdService {
   async showRewarded(): Promise<boolean> {
     return new Promise(async (resolve) => {
       try {
-        let rewarded = false;
+        let rewardEarned = false;
 
-        // Using string literals for event names to avoid export errors
-        const rewardListener = await AdMob.addListener('rewardedAdReward', (reward) => {
-          console.log('User earned reward:', reward);
-          rewarded = true;
+        const rewardListener = await AdMob.addListener('rewardedAdReward', () => {
+          rewardEarned = true;
         });
 
         const dismissListener = await AdMob.addListener('rewardedAdDismissed', () => {
           rewardListener.remove();
           dismissListener.remove();
-          resolve(rewarded);
-        });
-
-        const failedListener = await AdMob.addListener('rewardedAdFailedToShow', () => {
-          rewardListener.remove();
-          dismissListener.remove();
-          failedListener.remove();
-          resolve(false);
+          resolve(rewardEarned);
         });
 
         await AdMob.showRewardVideo();
         this.isRewardedLoaded = false;
-        this.prepareRewarded(); // Preload next
+        this.prepareRewarded();
       } catch (e) {
-        // If native fails, return false to trigger web fallback
         resolve(false);
       }
     });
