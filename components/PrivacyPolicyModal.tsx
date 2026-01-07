@@ -23,86 +23,42 @@ const PrivacyPolicyModal: React.FC<PrivacyPolicyModalProps> = ({ onClose }) => {
           <section>
             <h3 className="text-sm font-bold text-white uppercase tracking-widest mb-2">1. Overview</h3>
             <p className="text-white text-sm leading-relaxed">
-              2048STACK is committed to protecting your privacy. This policy describes how we handle data when you play our game.
+              2048STACK is an ad-supported game. By using this application, you acknowledge that certain data collection is <strong>required</strong> for the game to function and provide its features.
             </p>
           </section>
 
           <section>
-            <h3 className="text-sm font-bold text-white uppercase tracking-widest mb-2">2. Third-Party Services</h3>
+            <h3 className="text-sm font-bold text-white uppercase tracking-widest mb-2">2. Required Data Collection</h3>
             <p className="text-white text-sm leading-relaxed mb-3">
-              We use third-party providers to enhance your experience. These services may collect information used to identify you:
+              This app uses the <strong>Google AdMob SDK</strong>. Because the game is free and ad-supported, the collection of the following data is <strong>mandatory</strong> and cannot be opted-out of within the app:
             </p>
             <ul className="list-disc pl-5 text-white text-sm space-y-2">
-              <li><strong>Google AdMob:</strong> Used for displaying advertisements. They may collect Advertising IDs to provide personalized ads.</li>
-              <li><strong>Google Gemini API:</strong> We send game metrics (score, merge values) to Google's AI models to generate real-time commentary. No personal identity data is sent to the AI.</li>
-              <li><strong>Google Play Services:</strong> Core functionality for Android devices.</li>
+              <li><strong>Device or other IDs:</strong> Your Android Advertising ID is collected to serve ads, measure performance, and prevent fraud. This data is <strong>shared</strong> with third parties (Google).</li>
+              <li><strong>App Performance Data:</strong> Crash logs, diagnostics, and performance metrics are collected and shared to ensure game stability and security.</li>
             </ul>
           </section>
 
           <section>
-            <h3 className="text-sm font-bold text-white uppercase tracking-widest mb-2">3. Data Collection</h3>
+            <h3 className="text-sm font-bold text-white uppercase tracking-widest mb-2">3. Data Usage & Processing</h3>
             <p className="text-white text-sm leading-relaxed">
-              We do not collect personal information like your name or email. We only store game-related data (high scores) locally on your device.
+              Data is <strong>not processed ephemerally</strong>; it is stored by our partners for advertising and analytics purposes. All data transfers are performed over secure, encrypted connections (HTTPS).
             </p>
           </section>
 
           <section>
-            <h3 className="text-sm font-bold text-white uppercase tracking-widest mb-2">4. Children's Privacy</h3>
+            <h3 className="text-sm font-bold text-white uppercase tracking-widest mb-2">4. AI Interaction</h3>
             <p className="text-white text-sm leading-relaxed">
-              We do not knowingly collect data from children under the age of 13. If you believe we have inadvertently collected such data, please contact us.
+              Basic game metrics (scores) are sent to the <strong>Google Gemini API</strong> to generate real-time reactions. No personally identifiable information is sent to the Gemini service.
+            </p>
+          </section>
+
+          <section>
+            <h3 className="text-sm font-bold text-white uppercase tracking-widest mb-2">5. Your Rights</h3>
+            <p className="text-white text-sm leading-relaxed">
+              High scores are stored locally. You can delete this by clearing app data in your device settings. To manage your Advertising ID, visit your Google Account's "Ads" settings.
             </p>
           </section>
         </div>
 
         {/* TERMS OF SERVICE SECTION */}
-        <div className="space-y-4 pt-4 border-t border-white/10">
-          <h2 className="text-xl font-black text-white border-b border-white/20 pb-2 uppercase tracking-tighter">Terms of Service</h2>
-          
-          <section>
-            <h3 className="text-sm font-bold text-white uppercase tracking-widest mb-2">1. Acceptance of Terms</h3>
-            <p className="text-white text-sm leading-relaxed">
-              By accessing or using 2048STACK, you agree to be bound by these Terms of Service. If you do not agree, do not use the application.
-            </p>
-          </section>
-
-          <section>
-            <h3 className="text-sm font-bold text-white uppercase tracking-widest mb-2">2. User Conduct</h3>
-            <p className="text-white text-sm leading-relaxed">
-              Users are prohibited from attempting to reverse engineer, decompile, or otherwise extract the source code of the application. Cheating or exploiting game physics is prohibited.
-            </p>
-          </section>
-
-          <section>
-            <h3 className="text-sm font-bold text-white uppercase tracking-widest mb-2">3. Intellectual Property</h3>
-            <p className="text-white text-sm leading-relaxed">
-              All visual assets, sounds, and software code are the property of the developer. You are granted a limited, non-exclusive license to play the game for personal entertainment.
-            </p>
-          </section>
-
-          <section>
-            <h3 className="text-sm font-bold text-white uppercase tracking-widest mb-2">4. Disclaimer of Warranty</h3>
-            <p className="text-white text-sm leading-relaxed">
-              The game is provided "as is" without warranty of any kind. The developer is not responsible for any data loss or device damage resulting from the use of the app.
-            </p>
-          </section>
-
-          <section>
-            <h3 className="text-sm font-bold text-white uppercase tracking-widest mb-2">5. Changes to Terms</h3>
-            <p className="text-white text-sm leading-relaxed">
-              The developer reserves the right to modify these terms at any time. Continued use of the app constitutes acceptance of the updated terms.
-            </p>
-          </section>
-        </div>
-      </div>
-
-      <button 
-        onClick={onClose}
-        className="mt-6 w-full py-4 bg-white text-blue-950 font-black rounded-xl shadow-lg active:scale-95 transition-transform"
-      >
-        I ACCEPT
-      </button>
-    </div>
-  );
-};
-
-export default PrivacyPolicyModal;
+        <div className="space
