@@ -3,10 +3,11 @@ import React, { useState, useEffect } from 'react';
 
 interface AdInterstitialProps {
   onClose: () => void;
+  isRewarded?: boolean;
 }
 
-const AdInterstitial: React.FC<AdInterstitialProps> = ({ onClose }) => {
-  const [timeLeft, setTimeLeft] = useState(5);
+const AdInterstitial: React.FC<AdInterstitialProps> = ({ onClose, isRewarded = false }) => {
+  const [timeLeft, setTimeLeft] = useState(isRewarded ? 15 : 5); // Rewarded ads are usually longer
   const [canClose, setCanClose] = useState(false);
 
   useEffect(() => {
@@ -21,8 +22,8 @@ const AdInterstitial: React.FC<AdInterstitialProps> = ({ onClose }) => {
   return (
     <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-6 animate-in fade-in duration-300">
       {/* Ad Attribution */}
-      <div className="absolute top-4 left-4 bg-white/20 px-2 py-0.5 rounded text-[10px] font-bold text-white uppercase tracking-wider">
-        Ad
+      <div className={`absolute top-4 left-4 ${isRewarded ? 'bg-green-600' : 'bg-white/20'} px-2 py-0.5 rounded text-[10px] font-bold text-white uppercase tracking-wider`}>
+        {isRewarded ? 'Rewarded Ad' : 'Ad'}
       </div>
 
       {/* Close Button */}
@@ -37,15 +38,21 @@ const AdInterstitial: React.FC<AdInterstitialProps> = ({ onClose }) => {
       </button>
 
       {/* Ad Content Simulation */}
-      <div className="w-full max-w-sm aspect-[9/16] bg-gradient-to-br from-indigo-900 via-blue-900 to-black rounded-3xl overflow-hidden shadow-2xl border border-white/10 flex flex-col items-center justify-center text-center p-8">
-        <div className="w-20 h-20 bg-blue-600 rounded-2xl flex items-center justify-center mb-6 shadow-lg animate-pulse">
-          <i className="fas fa-rocket text-4xl text-white"></i>
+      <div className={`w-full max-w-sm aspect-[9/16] bg-gradient-to-br ${isRewarded ? 'from-green-900 via-emerald-900 to-black' : 'from-indigo-900 via-blue-900 to-black'} rounded-3xl overflow-hidden shadow-2xl border border-white/10 flex flex-col items-center justify-center text-center p-8`}>
+        <div className={`w-20 h-20 ${isRewarded ? 'bg-emerald-600' : 'bg-blue-600'} rounded-2xl flex items-center justify-center mb-6 shadow-lg animate-pulse`}>
+          <i className={`fas ${isRewarded ? 'fa-gift' : 'fa-rocket'} text-4xl text-white`}></i>
         </div>
-        <h3 className="text-2xl font-black mb-2 italic text-white">SUPER STACKER PRO</h3>
-        <p className="text-white text-sm mb-8">Level up your stacking skills with the pro version!</p>
+        <h3 className="text-2xl font-black mb-2 italic text-white">
+          {isRewarded ? 'UNLOCK YOUR REWARD' : 'SUPER STACKER PRO'}
+        </h3>
+        <p className="text-white text-sm mb-8 opacity-80">
+          {isRewarded 
+            ? 'Watch this short video to continue your game and save your high score!' 
+            : 'Level up your stacking skills with the pro version!'}
+        </p>
         
-        <div className="w-full bg-blue-600 py-4 rounded-xl font-black text-lg text-white shadow-xl mb-4">
-          INSTALL NOW
+        <div className={`w-full ${isRewarded ? 'bg-emerald-600' : 'bg-blue-600'} py-4 rounded-xl font-black text-lg text-white shadow-xl mb-4`}>
+          {isRewarded ? 'CLAIM REWARD' : 'INSTALL NOW'}
         </div>
         
         <div className="flex gap-1 text-yellow-400 text-xs">
@@ -57,8 +64,10 @@ const AdInterstitial: React.FC<AdInterstitialProps> = ({ onClose }) => {
         </div>
       </div>
 
-      <p className="mt-8 text-white text-xs uppercase tracking-[0.2em]">
-        {canClose ? 'You can now close the ad' : `Reward in ${timeLeft} seconds`}
+      <p className="mt-8 text-white text-xs uppercase tracking-[0.2em] font-bold">
+        {canClose 
+          ? (isRewarded ? 'REWARD SECURED! CLOSE TO CONTINUE' : 'YOU CAN NOW CLOSE THE AD') 
+          : (isRewarded ? `WATCH ${timeLeft}S MORE FOR REWARD` : `REWARD IN ${timeLeft} SECONDS`)}
       </p>
     </div>
   );
