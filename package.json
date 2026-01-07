@@ -16,7 +16,8 @@
     "@google/genai": "^1.34.0",
     "matter-js": "^0.20.0",
     "react": "^19.2.3",
-    "react-dom": "^19.2.3"
+    "matter-js": "^0.20.0",
+    "@capacitor-community/admob": "^8.0.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

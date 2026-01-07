@@ -1,0 +1,13 @@
+
+{
+  "appId": "com.stack2048.game",
+  "appName": "2048STACK",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "plugins": {
+    "AdMob": {
+      "initializeOnStartup": true,
+      "androidAppId": "ca-app-pub-7362193729014835~3043920483"
+    }
+  }
+}
