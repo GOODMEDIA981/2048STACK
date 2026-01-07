@@ -7,7 +7,7 @@
   "plugins": {
     "AdMob": {
       "initializeOnStartup": true,
-      "androidAppId": "ca-app-pub-XXXXXXXXXXXXXXXX~XXXXXXXXXX"
+      "androidAppId": "ca-app-pub-7362193729014835~3043920483"
     }
   }
 }

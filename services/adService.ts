@@ -3,17 +3,18 @@ import { AdMob, InterstitialAdOptions, RewardedAdOptions } from '@capacitor-comm
 
 /**
  * ADMOB PRODUCTION CHECKLIST:
- * 1. Replace the IDs below with your REAL "Ad Unit IDs" from the AdMob dashboard.
- * 2. The "App ID" (with the ~) goes in capacitor.config.json and AndroidManifest.xml.
- * 3. The "Ad Unit IDs" (with the /) go here.
+ * 1. Your App ID (ca-app-pub-7362193729014835~3043920483) is already in capacitor.config.json.
+ * 2. You now need "Ad Unit IDs" (which have a "/" instead of a "~") for the variables below.
+ * 3. Go to AdMob > Ad Units > Create Ad Unit (Interstitial and Rewarded).
  */
 class AdService {
   private isInterstitialLoaded: boolean = false;
   private isRewardedLoaded: boolean = false;
   
-  // REPLACE THESE WITH YOUR REAL "AD UNIT IDs" (Format: ca-app-pub-XXX/YYY)
-  private readonly INTERSTITIAL_ID = 'ca-app-pub-3940256099942544/1033173712'; // Replace this
-  private readonly REWARDED_ID = 'ca-app-pub-3940256099942544/5224354917';     // Replace this
+  // !!! ACTION REQUIRED: Replace these test IDs with your REAL "Ad Unit IDs" from AdMob !!!
+  // These look like ca-app-pub-7362193729014835/XXXXXXXXXX
+  private readonly INTERSTITIAL_ID = 'ca-app-pub-3940256099942544/1033173712'; // Test Interstitial ID
+  private readonly REWARDED_ID = 'ca-app-pub-3940256099942544/5224354917';     // Test Rewarded ID
 
   async initialize(): Promise<void> {
     try {

@@ -9,7 +9,7 @@ Inside the `<application>` tag, you MUST add your AdMob App ID or the app will c
 ```xml
 <meta-data
     android:name="com.google.android.gms.ads.APPLICATION_ID"
-    android:value="ca-app-pub-XXXXXXXXXXXXXXXX~XXXXXXXXXX"/>
+    android:value="ca-app-pub-7362193729014835~3043920483"/>
 ```
 
 ## 2. App Versioning
